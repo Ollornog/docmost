@@ -41,6 +41,7 @@ import {
   Drawio,
   Excalidraw,
   Embed,
+  DatabaseTable,
   TiptapPdf,
   PageBreak,
   SearchAndReplace,
@@ -87,6 +88,7 @@ import CodeBlockView from "@/features/editor/components/code-block/code-block-vi
 import DrawioView from "../components/drawio/drawio-view";
 import ExcalidrawView from "@/features/editor/components/excalidraw/excalidraw-view-lazy.tsx";
 import EmbedView from "@/features/editor/components/embed/embed-view.tsx";
+import DatabaseTableView from "@/features/editor/components/database-table/database-table-view.tsx";
 import PdfView from "@/features/editor/components/pdf/pdf-view.tsx";
 import SubpagesView from "@/features/editor/components/subpages/subpages-view.tsx";
 import TransclusionView from "@/features/editor/components/transclusion/transclusion-view.tsx";
@@ -363,6 +365,9 @@ export const mainExtensions = [
   }),
   Embed.configure({
     view: EmbedView,
+  }),
+  DatabaseTable.configure({
+    view: DatabaseTableView,
   }),
   TiptapPdf.configure({
     view: PdfView,
