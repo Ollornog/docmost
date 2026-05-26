@@ -378,7 +378,7 @@ export default function DatabaseTableView(props: NodeViewProps) {
                         if (!rowspanMap.has(ri)) return null;
                         const rs = rowspanMap.get(ri)!;
                         const gIdx = groupIdxMap.get(ri)!;
-                        const grpBg = gIdx % 2 === 0 ? GRP_BG_A : GRP_BG_B;
+                        const grpBg = gIdx % 2 === 0 ? GRP_BG_B : GRP_BG_A;
                         const bg = inSel(ri, ci) ? SEL_BG : grpBg;
                         return <Table.Td key={ci} data-cell="1" data-r={ri} data-c={ci} rowSpan={rs} style={{ background: bg, cursor: "pointer", verticalAlign: "top", fontWeight: 500 }}>{cell}</Table.Td>;
                       }
