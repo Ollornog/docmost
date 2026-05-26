@@ -44,7 +44,7 @@ interface TableData { columns: string[]; rows: string[][]; count: number; title:
 type Sel = { r1: number; c1: number; r2: number; c2: number };
 
 const HEADER_BG = "light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5))";
-const ORANGE_BG = "light-dark(var(--mantine-color-orange-1), var(--mantine-color-orange-9))";
+const ORANGE_BG = "light-dark(var(--mantine-color-orange-4), var(--mantine-color-orange-8))";
 const SEL_BG = "light-dark(var(--mantine-color-blue-1), var(--mantine-color-blue-9))";
 
 function fmt(v: any): string {
