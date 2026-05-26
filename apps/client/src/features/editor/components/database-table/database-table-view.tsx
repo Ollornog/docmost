@@ -351,7 +351,8 @@ export default function DatabaseTableView(props: NodeViewProps) {
           }
         }
         // Gruppen-Zellen: alternieren pro GRUPPE in den GLEICHEN Tönen wie das Body-Striping (weiß / grau)
-        const GRP_BG_A = "transparent";
+        // Explizite Farben (kein transparent), sonst scheint der Mantine-Streifen der ersten Gruppen-Zeile durch.
+        const GRP_BG_A = "var(--mantine-color-body)";
         const GRP_BG_B = "light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))";
 
         return (
