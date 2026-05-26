@@ -336,18 +336,23 @@ export default function DatabaseTableView(props: NodeViewProps) {
         const groupByIds = data.groupByIds || [];
         const groupColIdx = groupByIds.length > 0 ? fieldIds.findIndex((id) => id === groupByIds[0]) : -1;
         const grouped = groupColIdx >= 0;
-        // Pro Zeilenindex: Anzahl der Folgezeilen mit gleichem Group-Wert (undefined = gehört zu vorigem Block)
+        // Pro Zeilenindex: Anzahl der Folgezeilen mit gleichem Group-Wert + Gruppen-Index (für alternierende Farbe)
         const rowspanMap = new Map<number, number>();
+        const groupIdxMap = new Map<number, number>();
         if (grouped) {
-          let i = 0;
+          let i = 0; let gIdx = 0;
           while (i < data.rows.length) {
             const v = data.rows[i][groupColIdx] || "";
             let j = i + 1;
             while (j < data.rows.length && (data.rows[j][groupColIdx] || "") === v) j++;
             rowspanMap.set(i, j - i);
-            i = j;
+            groupIdxMap.set(i, gIdx);
+            gIdx++; i = j;
           }
         }
+        // Eigene Hintergrundfarben für die verbundenen Gruppenzellen, alternierend pro GRUPPE
+        const GRP_BG_A = "light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))";
+        const GRP_BG_B = "light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5))";
 
         return (
           <div ref={scrollRef} draggable={false} onDragStart={(e) => e.preventDefault()} style={{ userSelect: "text", cursor: "default", overflowX: "auto" }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onDoubleClick={selectContainer}>
@@ -371,7 +376,9 @@ export default function DatabaseTableView(props: NodeViewProps) {
                       if (grouped && ci === groupColIdx) {
                         if (!rowspanMap.has(ri)) return null;
                         const rs = rowspanMap.get(ri)!;
-                        const bg = inSel(ri, ci) ? SEL_BG : undefined;
+                        const gIdx = groupIdxMap.get(ri)!;
+                        const grpBg = gIdx % 2 === 0 ? GRP_BG_A : GRP_BG_B;
+                        const bg = inSel(ri, ci) ? SEL_BG : grpBg;
                         return <Table.Td key={ci} data-cell="1" data-r={ri} data-c={ci} rowSpan={rs} style={{ background: bg, cursor: "pointer", verticalAlign: "top", fontWeight: 500 }}>{cell}</Table.Td>;
                       }
                       const isHeaderCol = headerColumn && ci === 0;
