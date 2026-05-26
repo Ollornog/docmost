@@ -109,11 +109,12 @@ export const DatabaseTable = Node.create<DatabaseTableOptions>({
         }),
       },
       bgMode: {
-        // "striped" (Default, gestreift) · "plain" (einfarbig) · "noheader" (Header ohne Hintergrund)
-        default: "striped",
-        parseHTML: (element) => element.getAttribute("data-bg-mode") || "striped",
+        // "orange" (Default, Header hell orange) · "striped" (gestreift, Header grau) ·
+        // "plain" (einfarbig, Header grau) · "noheader" (Header ohne Hintergrund)
+        default: "orange",
+        parseHTML: (element) => element.getAttribute("data-bg-mode") || "orange",
         renderHTML: (attributes: any) => ({
-          "data-bg-mode": attributes.bgMode || "striped",
+          "data-bg-mode": attributes.bgMode || "orange",
         }),
       },
       borderMode: {
