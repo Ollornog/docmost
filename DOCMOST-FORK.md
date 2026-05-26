@@ -1,5 +1,7 @@
 # Docmost-Fork: nativer „Datenbank-Tabelle"-Block (Baserow + NocoDB)
 
+> **Gesamtdoku zur Integration** (kb-sync, Admin-UI, Caddy-Varianten, Stolperfallen, Operations): siehe **extras/INTEGRATION.md**.
+
 > Eigener Docmost-Build mit einem zusätzlichen Editor-Block, der einen **Baserow- oder NocoDB-Public-View-Link**
 > entgegennimmt und die Daten als **native Docmost-Tabelle** rendert (kein iframe). Beliebig viele pro Seite,
 > aktualisiert sich beim Laden. Entwickelt + isoliert getestet am 2026-05-21.

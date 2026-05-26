@@ -1,0 +1,27 @@
+{
+	auto_https off
+}
+
+:3002 {
+	reverse_proxy docmost:3000
+}
+
+:8888 {
+	reverse_proxy baserow:80
+}
+
+:8090 {
+	reverse_proxy kb-sync:8090
+}
+
+:80 {
+	@admin path /admin /admin/*
+	handle @admin {
+		reverse_proxy admin:8091
+	}
+	handle {
+		root * /srv/site
+		templates
+		file_server
+	}
+}

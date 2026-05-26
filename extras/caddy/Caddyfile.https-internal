@@ -1,0 +1,30 @@
+# HTTPS-Variante mit interner CA (Caddy "tls internal")
+# Achtung: Clients muessen Caddys Root-CA importieren, sonst fetch() durch den
+# databaseTable-Block scheitert (Cross-Origin-fetch verlangt gueltiges Cert).
+# Root-CA-Pfad: /srv/stack/caddy/data/caddy/pki/authorities/local/root.crt
+{
+	auto_https disable_redirects
+	# IP-Zugriff sendet kein SNI -> Default-SNI noetig, sonst TLS-Handshake-Fehler
+	default_sni {$SERVER_IP}
+}
+
+https://{$SERVER_IP}:3002 {
+	tls internal
+	reverse_proxy docmost:3000
+}
+
+https://{$SERVER_IP}:8888 {
+	tls internal
+	reverse_proxy baserow:80
+}
+
+https://{$SERVER_IP}:8090 {
+	tls internal
+	reverse_proxy kb-sync:8090
+}
+
+:80 {
+	root * /srv/site
+	templates
+	file_server
+}
