@@ -21,6 +21,7 @@ import {
   IconBorderHorizontal,
   IconBorderNone,
   IconCheck,
+  IconBaselineDensityMedium,
   IconColorSwatch,
   IconCopy,
   IconDatabase,
@@ -116,7 +117,7 @@ async function fetchNocodb(src: string): Promise<TableData> {
 
 export default function DatabaseTableView(props: NodeViewProps) {
   const { node, selected, updateAttributes, editor, deleteNode, getPos } = props;
-  const { src, title: titleOverride, widthMode, headerRow, headerColumn, rowNumbers, showTitle, bgMode, borderMode } = node.attrs as any;
+  const { src, title: titleOverride, widthMode, headerRow, headerColumn, rowNumbers, showTitle, striped, headerColor, borderMode } = node.attrs as any;
 
   const [data, setData] = useState<TableData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -179,11 +180,11 @@ export default function DatabaseTableView(props: NodeViewProps) {
   function cycleBorder() { const o = ["all", "h", "none"]; updateAttributes({ borderMode: o[(o.indexOf(bMode) + 1) % 3] }); }
   const BLABEL: Record<string, string> = { all: "Rahmen: alle", h: "Rahmen: nur horizontal", none: "Rahmen: keine" };
   const BorderIcon = bMode === "all" ? IconBorderAll : bMode === "h" ? IconBorderHorizontal : IconBorderNone;
-  const bgm = bgMode || "striped";
-  const isStriped = bgm === "striped";
-  const headerBg = bgm === "noheader" ? "transparent" : HEADER_BG;
-  const BGLABEL: Record<string, string> = { striped: "Hintergrund: gestreift", plain: "Hintergrund: einfarbig", noheader: "Hintergrund: Header ohne Hintergrund" };
-  function cycleBg() { const o = ["striped", "plain", "noheader"]; updateAttributes({ bgMode: o[(o.indexOf(bgm) + 1) % 3] }); }
+  const isStriped = striped !== false;
+  const hCol = headerColor || "orange";
+  const headerBg = hCol === "orange" ? ORANGE_BG : hCol === "gray" ? HEADER_BG : "transparent";
+  const HCOLOR_LABEL: Record<string, string> = { orange: "Header-Farbe: orange", gray: "Header-Farbe: grau", white: "Header-Farbe: weiß" };
+  function cycleHeaderColor() { const o = ["orange", "gray", "white"]; updateAttributes({ headerColor: o[(o.indexOf(hCol) + 1) % 3] }); }
   // Rahmen komplett über eigene CSS-Klassen steuern (Mantine-Border-Props aus):
   const borderProps = { withTableBorder: false, withColumnBorders: false, withRowBorders: false };
   const borderClass = bMode === "all" ? classes.bAll : bMode === "h" ? classes.bH : classes.bNone;
@@ -290,7 +291,8 @@ export default function DatabaseTableView(props: NodeViewProps) {
             <TBtn active={headerColumn} label="Erste Spalte fett + fixiert" onClick={() => updateAttributes({ headerColumn: !headerColumn })}><IconLayoutSidebar size={17} /></TBtn>
             <TBtn active={rowNumbers} label="Zeilennummern" onClick={() => updateAttributes({ rowNumbers: !rowNumbers })}><IconListNumbers size={17} /></TBtn>
             <div className={toolbarClasses.divider} />
-            <TBtn active={bgm !== "plain"} label={BGLABEL[bgm]} onClick={cycleBg}><IconColorSwatch size={17} /></TBtn>
+            <TBtn active={isStriped} label={isStriped ? "Zeilen: gestreift" : "Zeilen: einfarbig"} onClick={() => updateAttributes({ striped: !isStriped })}><IconBaselineDensityMedium size={17} /></TBtn>
+            <TBtn active={hCol !== "white"} label={HCOLOR_LABEL[hCol]} onClick={cycleHeaderColor}><IconColorSwatch size={17} /></TBtn>
             <TBtn label={BLABEL[bMode]} onClick={cycleBorder}><BorderIcon size={17} /></TBtn>
             <div className={toolbarClasses.divider} />
             <Tooltip label="Tabelle öffnen (neuer Tab)" position="top" withinPortal><ActionIcon variant="subtle" size="md" className={classes.iconLink} component="a" href={src} target="_blank" rel="noopener noreferrer"><IconExternalLink size={17} /></ActionIcon></Tooltip>
@@ -331,9 +333,9 @@ export default function DatabaseTableView(props: NodeViewProps) {
             {headerRow && (
               <Table.Thead>
                 <Table.Tr>
-                  {rowNumbers && <Table.Th style={{ width: "1px", background: headerColumn ? headerBg : undefined }} />}
+                  {rowNumbers && <Table.Th style={{ width: "1px", background: headerBg }} />}
                   {data.columns.map((c, i) => (
-                    <Table.Th key={i} data-colheader={i} style={{ cursor: "pointer", background: bgm === "noheader" ? "transparent" : (headerColumn && i === 0 ? HEADER_BG : undefined), ...(headerColumn && i === 0 ? { position: "sticky", left: 0, zIndex: 2 } : {}) }}>{c}</Table.Th>
+                    <Table.Th key={i} data-colheader={i} style={{ cursor: "pointer", background: headerBg, ...(headerColumn && i === 0 ? { position: "sticky", left: 0, zIndex: 2 } : {}) }}>{c}</Table.Th>
                   ))}
                 </Table.Tr>
               </Table.Thead>
