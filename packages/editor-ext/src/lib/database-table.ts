@@ -108,13 +108,20 @@ export const DatabaseTable = Node.create<DatabaseTableOptions>({
           "data-show-title": attributes.showTitle ? "true" : "false",
         }),
       },
-      bgMode: {
-        // "orange" (Default, Header hell orange) · "striped" (gestreift, Header grau) ·
-        // "plain" (einfarbig, Header grau) · "noheader" (Header ohne Hintergrund)
-        default: "orange",
-        parseHTML: (element) => element.getAttribute("data-bg-mode") || "orange",
+      striped: {
+        // Zeilen-Streifen (Body) an/aus
+        default: true,
+        parseHTML: (element) => element.getAttribute("data-striped") !== "false",
         renderHTML: (attributes: any) => ({
-          "data-bg-mode": attributes.bgMode || "orange",
+          "data-striped": attributes.striped !== false ? "true" : "false",
+        }),
+      },
+      headerColor: {
+        // "orange" (Default) · "gray" · "white" (kein Header-Hintergrund)
+        default: "orange",
+        parseHTML: (element) => element.getAttribute("data-header-color") || "orange",
+        renderHTML: (attributes: any) => ({
+          "data-header-color": attributes.headerColor || "orange",
         }),
       },
       borderMode: {
