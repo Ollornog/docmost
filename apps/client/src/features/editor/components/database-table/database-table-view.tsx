@@ -350,9 +350,9 @@ export default function DatabaseTableView(props: NodeViewProps) {
             gIdx++; i = j;
           }
         }
-        // Eigene Hintergrundfarben für die verbundenen Gruppenzellen, alternierend pro GRUPPE
-        const GRP_BG_A = "light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))";
-        const GRP_BG_B = "light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5))";
+        // Gruppen-Zellen: alternieren pro GRUPPE in den GLEICHEN Tönen wie das Body-Striping (weiß / grau)
+        const GRP_BG_A = "transparent";
+        const GRP_BG_B = "light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))";
 
         return (
           <div ref={scrollRef} draggable={false} onDragStart={(e) => e.preventDefault()} style={{ userSelect: "text", cursor: "default", overflowX: "auto" }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onDoubleClick={selectContainer}>
