@@ -43,92 +43,126 @@ index 0000000..ae0c677
 +}
 +
 diff --git a/apps/client/src/features/editor/components/database-table/database-table-view.tsx b/apps/client/src/features/editor/components/database-table/database-table-view.tsx
-index 4f1821f2..220ae3d8 100644
+index 3dfcd58a..115e50eb 100644
 --- a/apps/client/src/features/editor/components/database-table/database-table-view.tsx
 +++ b/apps/client/src/features/editor/components/database-table/database-table-view.tsx
-@@ -21,6 +21,7 @@ import {
-   IconBorderHorizontal,
-   IconBorderNone,
-   IconCheck,
-+  IconBaselineDensityMedium,
-   IconColorSwatch,
-   IconCopy,
-   IconDatabase,
-@@ -116,7 +117,7 @@ async function fetchNocodb(src: string): Promise<TableData> {
+@@ -40,7 +40,7 @@ import { detectDatabaseSource, sanitizeUrl } from "@docmost/editor-ext";
+ import toolbarClasses from "../common/toolbar-menu.module.css";
+ import classes from "./database-table-view.module.css";
  
- export default function DatabaseTableView(props: NodeViewProps) {
-   const { node, selected, updateAttributes, editor, deleteNode, getPos } = props;
--  const { src, title: titleOverride, widthMode, headerRow, headerColumn, rowNumbers, showTitle, bgMode, borderMode } = node.attrs as any;
-+  const { src, title: titleOverride, widthMode, headerRow, headerColumn, rowNumbers, showTitle, striped, headerColor, borderMode } = node.attrs as any;
+-interface TableData { columns: string[]; rows: string[][]; count: number; title: string; editUrl: string; }
++interface TableData { columns: string[]; rows: string[][]; count: number; title: string; editUrl: string; fieldIds?: number[]; groupByIds?: number[]; }
+ type Sel = { r1: number; c1: number; r2: number; c2: number };
  
-   const [data, setData] = useState<TableData | null>(null);
-   const [loading, setLoading] = useState(false);
-@@ -179,11 +180,11 @@ export default function DatabaseTableView(props: NodeViewProps) {
-   function cycleBorder() { const o = ["all", "h", "none"]; updateAttributes({ borderMode: o[(o.indexOf(bMode) + 1) % 3] }); }
-   const BLABEL: Record<string, string> = { all: "Rahmen: alle", h: "Rahmen: nur horizontal", none: "Rahmen: keine" };
-   const BorderIcon = bMode === "all" ? IconBorderAll : bMode === "h" ? IconBorderHorizontal : IconBorderNone;
--  const bgm = bgMode || "orange";
--  const isStriped = bgm === "striped";
--  const headerBg = bgm === "noheader" ? "transparent" : bgm === "orange" ? ORANGE_BG : HEADER_BG;
--  const BGLABEL: Record<string, string> = { orange: "Hintergrund: Header orange", striped: "Hintergrund: gestreift", plain: "Hintergrund: einfarbig", noheader: "Hintergrund: Header ohne Hintergrund" };
--  function cycleBg() { const o = ["orange", "striped", "plain", "noheader"]; updateAttributes({ bgMode: o[(o.indexOf(bgm) + 1) % 4] }); }
-+  const isStriped = striped !== false;
-+  const hCol = headerColor || "orange";
-+  const headerBg = hCol === "orange" ? ORANGE_BG : hCol === "gray" ? HEADER_BG : "transparent";
-+  const HCOLOR_LABEL: Record<string, string> = { orange: "Header-Farbe: orange", gray: "Header-Farbe: grau", white: "Header-Farbe: weiß" };
-+  function cycleHeaderColor() { const o = ["orange", "gray", "white"]; updateAttributes({ headerColor: o[(o.indexOf(hCol) + 1) % 3] }); }
-   // Rahmen komplett über eigene CSS-Klassen steuern (Mantine-Border-Props aus):
-   const borderProps = { withTableBorder: false, withColumnBorders: false, withRowBorders: false };
-   const borderClass = bMode === "all" ? classes.bAll : bMode === "h" ? classes.bH : classes.bNone;
-@@ -290,7 +291,8 @@ export default function DatabaseTableView(props: NodeViewProps) {
-             <TBtn active={headerColumn} label="Erste Spalte fett + fixiert" onClick={() => updateAttributes({ headerColumn: !headerColumn })}><IconLayoutSidebar size={17} /></TBtn>
-             <TBtn active={rowNumbers} label="Zeilennummern" onClick={() => updateAttributes({ rowNumbers: !rowNumbers })}><IconListNumbers size={17} /></TBtn>
-             <div className={toolbarClasses.divider} />
--            <TBtn active={bgm === "orange" || bgm === "striped"} label={BGLABEL[bgm]} onClick={cycleBg}><IconColorSwatch size={17} /></TBtn>
-+            <TBtn active={isStriped} label={isStriped ? "Zeilen: gestreift" : "Zeilen: einfarbig"} onClick={() => updateAttributes({ striped: !isStriped })}><IconBaselineDensityMedium size={17} /></TBtn>
-+            <TBtn active={hCol !== "white"} label={HCOLOR_LABEL[hCol]} onClick={cycleHeaderColor}><IconColorSwatch size={17} /></TBtn>
-             <TBtn label={BLABEL[bMode]} onClick={cycleBorder}><BorderIcon size={17} /></TBtn>
-             <div className={toolbarClasses.divider} />
-             <Tooltip label="Tabelle öffnen (neuer Tab)" position="top" withinPortal><ActionIcon variant="subtle" size="md" className={classes.iconLink} component="a" href={src} target="_blank" rel="noopener noreferrer"><IconExternalLink size={17} /></ActionIcon></Tooltip>
-@@ -331,9 +333,9 @@ export default function DatabaseTableView(props: NodeViewProps) {
-             {headerRow && (
-               <Table.Thead>
-                 <Table.Tr>
--                  {rowNumbers && <Table.Th style={{ width: "1px", background: bgm === "orange" ? ORANGE_BG : (headerColumn ? headerBg : undefined) }} />}
-+                  {rowNumbers && <Table.Th style={{ width: "1px", background: headerBg }} />}
-                   {data.columns.map((c, i) => (
--                    <Table.Th key={i} data-colheader={i} style={{ cursor: "pointer", background: bgm === "noheader" ? "transparent" : bgm === "orange" ? ORANGE_BG : (headerColumn && i === 0 ? HEADER_BG : undefined), ...(headerColumn && i === 0 ? { position: "sticky", left: 0, zIndex: 2 } : {}) }}>{c}</Table.Th>
-+                    <Table.Th key={i} data-colheader={i} style={{ cursor: "pointer", background: headerBg, ...(headerColumn && i === 0 ? { position: "sticky", left: 0, zIndex: 2 } : {}) }}>{c}</Table.Th>
-                   ))}
-                 </Table.Tr>
-               </Table.Thead>
-diff --git a/packages/editor-ext/src/lib/database-table.ts b/packages/editor-ext/src/lib/database-table.ts
-index 07489356..4371f827 100644
---- a/packages/editor-ext/src/lib/database-table.ts
-+++ b/packages/editor-ext/src/lib/database-table.ts
-@@ -108,13 +108,20 @@ export const DatabaseTable = Node.create<DatabaseTableOptions>({
-           "data-show-title": attributes.showTitle ? "true" : "false",
-         }),
-       },
--      bgMode: {
--        // "orange" (Default, Header hell orange) · "striped" (gestreift, Header grau) ·
--        // "plain" (einfarbig, Header grau) · "noheader" (Header ohne Hintergrund)
-+      striped: {
-+        // Zeilen-Streifen (Body) an/aus
-+        default: true,
-+        parseHTML: (element) => element.getAttribute("data-striped") !== "false",
-+        renderHTML: (attributes: any) => ({
-+          "data-striped": attributes.striped !== false ? "true" : "false",
-+        }),
-+      },
-+      headerColor: {
-+        // "orange" (Default) · "gray" · "white" (kein Header-Hintergrund)
-         default: "orange",
--        parseHTML: (element) => element.getAttribute("data-bg-mode") || "orange",
-+        parseHTML: (element) => element.getAttribute("data-header-color") || "orange",
-         renderHTML: (attributes: any) => ({
--          "data-bg-mode": attributes.bgMode || "orange",
-+          "data-header-color": attributes.headerColor || "orange",
-         }),
-       },
-       borderMode: {
+ const HEADER_BG = "light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5))";
+@@ -99,7 +99,9 @@ async function fetchBaserow(src: string): Promise<TableData> {
+   const u = new URL(src);
+   let editUrl = u.origin;
+   try { const res = await fetch(`${u.protocol}//${u.hostname}:8090/resolve?slug=${slug}`).then((r) => r.json()); if (res?.editUrl) editUrl = res.editUrl; } catch { /* optional */ }
+-  return { columns, rows, count: results.length, title: info?.view?.name || "", editUrl };
++  const groupByIds: number[] = (info?.view?.group_bys || []).map((gb: any) => gb.field);
++  const fieldIds = fields.map((f) => f.id);
++  return { columns, rows, count: results.length, title: info?.view?.name || "", editUrl, fieldIds, groupByIds };
+ }
+ async function fetchNocodb(src: string): Promise<TableData> {
+   const origin = new URL(src).origin;
+@@ -327,37 +329,68 @@ export default function DatabaseTableView(props: NodeViewProps) {
+       {loading && !data && <Group justify="center" p="md"><Loader size="sm" /></Group>}
+       {error && <Text c="red" size="sm">⚠ {error}</Text>}
+ 
+-      {data && (
+-        <div ref={scrollRef} draggable={false} onDragStart={(e) => e.preventDefault()} style={{ userSelect: "text", cursor: "default", overflowX: "auto" }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onDoubleClick={selectContainer}>
+-          <Table {...borderProps} striped={isStriped} highlightOnHover className={borderClass} style={{ tableLayout: tableLayoutCss as any, width: tableWidth }}>
+-            {headerRow && (
+-              <Table.Thead>
+-                <Table.Tr>
+-                  {rowNumbers && <Table.Th style={{ width: "1px", background: headerBg }} />}
+-                  {data.columns.map((c, i) => (
+-                    <Table.Th key={i} data-colheader={i} style={{ cursor: "pointer", background: headerBg, ...(headerColumn && i === 0 ? { position: "sticky", left: 0, zIndex: 2 } : {}) }}>{c}</Table.Th>
+-                  ))}
+-                </Table.Tr>
+-              </Table.Thead>
+-            )}
+-            <Table.Tbody>
+-              {data.rows.map((row, ri) => (
+-                <Table.Tr key={ri}>
+-                  {rowNumbers && <Table.Td style={{ width: "1px", whiteSpace: "nowrap", textAlign: "right", color: "var(--mantine-color-dimmed)", background: headerColumn ? headerBg : undefined }}>{ri + 1}</Table.Td>}
+-                  {row.map((cell, ci) => {
+-                    const isHeaderCol = headerColumn && ci === 0;
+-                    const bg = inSel(ri, ci) ? SEL_BG : isHeaderCol ? headerBg : undefined;
+-                    const common = { "data-cell": "1", "data-r": ri, "data-c": ci, style: { background: bg, cursor: "pointer" } } as any;
+-                    return isHeaderCol
+-                      ? <Table.Th key={ci} {...common} style={{ ...common.style, position: "sticky", left: 0, fontWeight: 600, zIndex: 1 }}>{cell}</Table.Th>
+-                      : <Table.Td key={ci} {...common}>{cell}</Table.Td>;
+-                  })}
+-                </Table.Tr>
+-              ))}
+-            </Table.Tbody>
+-          </Table>
+-        </div>
+-      )}
++      {data && (() => {
++        // Gruppierung aus Baserow-View übernehmen: erste Group-By-Spalte aus dem Datensatz entfernen
++        // und stattdessen Gruppen-Header-Zeilen einfügen (kein doppelter Inhalt in den Zeilen).
++        const fieldIds = data.fieldIds || [];
++        const groupByIds = data.groupByIds || [];
++        const groupColIdx = groupByIds.length > 0 ? fieldIds.findIndex((id) => id === groupByIds[0]) : -1;
++        const grouped = groupColIdx >= 0;
++        const dispIdx = data.columns.map((_, i) => i).filter((i) => !grouped || i !== groupColIdx);
++        const groupFieldName = grouped ? data.columns[groupColIdx] : "";
++        const totalVisibleCols = dispIdx.length + (rowNumbers ? 1 : 0);
++        const groupHeaderBg = "light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-6))";
++
++        const bodyChildren: any[] = [];
++        let lastGroup: string | null = null;
++        data.rows.forEach((row, ri) => {
++          if (grouped) {
++            const gv = row[groupColIdx] || "";
++            if (gv !== lastGroup) {
++              bodyChildren.push(
++                <Table.Tr key={`g-${ri}`}>
++                  <Table.Td colSpan={totalVisibleCols} style={{ background: groupHeaderBg, fontWeight: 600, padding: "8px 12px" }}>
++                    {groupFieldName}: {gv || "(leer)"}
++                  </Table.Td>
++                </Table.Tr>,
++              );
++              lastGroup = gv;
++            }
++          }
++          bodyChildren.push(
++            <Table.Tr key={ri}>
++              {rowNumbers && <Table.Td style={{ width: "1px", whiteSpace: "nowrap", textAlign: "right", color: "var(--mantine-color-dimmed)", background: headerColumn ? headerBg : undefined }}>{ri + 1}</Table.Td>}
++              {dispIdx.map((ci, di) => {
++                const cell = row[ci];
++                const isHeaderCol = headerColumn && di === 0;
++                const bg = inSel(ri, ci) ? SEL_BG : isHeaderCol ? headerBg : undefined;
++                const common = { "data-cell": "1", "data-r": ri, "data-c": ci, style: { background: bg, cursor: "pointer" } } as any;
++                return isHeaderCol
++                  ? <Table.Th key={ci} {...common} style={{ ...common.style, position: "sticky", left: 0, fontWeight: 600, zIndex: 1 }}>{cell}</Table.Th>
++                  : <Table.Td key={ci} {...common}>{cell}</Table.Td>;
++              })}
++            </Table.Tr>,
++          );
++        });
++
++        return (
++          <div ref={scrollRef} draggable={false} onDragStart={(e) => e.preventDefault()} style={{ userSelect: "text", cursor: "default", overflowX: "auto" }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onDoubleClick={selectContainer}>
++            <Table {...borderProps} striped={isStriped} highlightOnHover className={borderClass} style={{ tableLayout: tableLayoutCss as any, width: tableWidth }}>
++              {headerRow && (
++                <Table.Thead>
++                  <Table.Tr>
++                    {rowNumbers && <Table.Th style={{ width: "1px", background: headerBg }} />}
++                    {dispIdx.map((ci, di) => (
++                      <Table.Th key={ci} data-colheader={ci} style={{ cursor: "pointer", background: headerBg, ...(headerColumn && di === 0 ? { position: "sticky", left: 0, zIndex: 2 } : {}) }}>{data.columns[ci]}</Table.Th>
++                    ))}
++                  </Table.Tr>
++                </Table.Thead>
++              )}
++              <Table.Tbody>{bodyChildren}</Table.Tbody>
++            </Table>
++          </div>
++        );
++      })()}
+       </div>
+     </NodeViewWrapper>
+   );
