@@ -43,16 +43,15 @@ index 0000000..ae0c677
 +}
 +
 diff --git a/apps/client/src/features/editor/components/database-table/database-table-view.tsx b/apps/client/src/features/editor/components/database-table/database-table-view.tsx
-index 08d6111d..7c27032d 100644
+index 7c27032d..3b55132b 100644
 --- a/apps/client/src/features/editor/components/database-table/database-table-view.tsx
 +++ b/apps/client/src/features/editor/components/database-table/database-table-view.tsx
-@@ -351,7 +351,8 @@ export default function DatabaseTableView(props: NodeViewProps) {
-           }
-         }
-         // Gruppen-Zellen: alternieren pro GRUPPE in den GLEICHEN Tönen wie das Body-Striping (weiß / grau)
--        const GRP_BG_A = "transparent";
-+        // Explizite Farben (kein transparent), sonst scheint der Mantine-Streifen der ersten Gruppen-Zeile durch.
-+        const GRP_BG_A = "var(--mantine-color-body)";
-         const GRP_BG_B = "light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))";
- 
-         return (
+@@ -378,7 +378,7 @@ export default function DatabaseTableView(props: NodeViewProps) {
+                         if (!rowspanMap.has(ri)) return null;
+                         const rs = rowspanMap.get(ri)!;
+                         const gIdx = groupIdxMap.get(ri)!;
+-                        const grpBg = gIdx % 2 === 0 ? GRP_BG_A : GRP_BG_B;
++                        const grpBg = gIdx % 2 === 0 ? GRP_BG_B : GRP_BG_A;
+                         const bg = inSel(ri, ci) ? SEL_BG : grpBg;
+                         return <Table.Td key={ci} data-cell="1" data-r={ri} data-c={ci} rowSpan={rs} style={{ background: bg, cursor: "pointer", verticalAlign: "top", fontWeight: 500 }}>{cell}</Table.Td>;
+                       }
