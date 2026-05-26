@@ -1,0 +1,118 @@
+networks:
+  frontend:
+  backend:
+
+services:
+  # ---------- Docmost (Custom-Image mit databaseTable-Block) ----------
+  docmost-db:
+    image: postgres:16-alpine
+    container_name: docmost-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DOCMOST_PG_DB}
+      - POSTGRES_USER=${DOCMOST_PG_USER}
+      - POSTGRES_PASSWORD=${DOCMOST_PG_PASS}
+      - TZ=${TZ}
+    volumes:
+      - ./docmost/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DOCMOST_PG_USER} -d ${DOCMOST_PG_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
+
+  docmost-redis:
+    image: redis:7-alpine
+    container_name: docmost-redis
+    restart: unless-stopped
+    networks: [backend]
+
+  docmost:
+    image: docmost-custom:local
+    container_name: docmost
+    restart: unless-stopped
+    depends_on:
+      docmost-db: { condition: service_healthy }
+      docmost-redis: { condition: service_started }
+    environment:
+      - APP_URL=http://${SERVER_IP}:3002
+      - APP_SECRET=${DOCMOST_APP_SECRET}
+      - DATABASE_URL=postgresql://${DOCMOST_PG_USER}:${DOCMOST_PG_PASS}@docmost-db:5432/${DOCMOST_PG_DB}?schema=public
+      - REDIS_URL=redis://docmost-redis:6379
+      - TZ=${TZ}
+    volumes:
+      - ./docmost/data:/app/data/storage
+    networks: [backend, frontend]
+
+  # ---------- Baserow ----------
+  baserow:
+    image: baserow/baserow:latest
+    container_name: baserow
+    restart: unless-stopped
+    environment:
+      - BASEROW_PUBLIC_URL=http://${SERVER_IP}:8888
+      - BASEROW_CADDY_ADDRESSES=:80
+      - SECRET_KEY=${BASEROW_SECRET_KEY}
+      - BASEROW_DISABLE_ANONYMOUS_TELEMETRY=true
+      - BASEROW_WEBHOOKS_ALLOW_PRIVATE_ADDRESS=true
+      - TZ=${TZ}
+    volumes:
+      - ./baserow/data:/baserow/data
+    networks: [frontend]
+
+  # ---------- Caddy (TLS-Terminierung, interne CA) ----------
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    environment:
+      - SERVER_IP=${SERVER_IP}
+    ports:
+      - "80:80"
+      - "3002:3002"
+      - "8888:8888"
+      - "8090:8090"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+      - ./caddy/site:/srv/site:ro
+    networks: [frontend]
+
+  # ---------- kb-sync (Baserow -> Docmost native Tabellen-Snapshots) ----------
+  kb-sync:
+    image: python:3.12-alpine
+    container_name: kb-sync
+    restart: unless-stopped
+    command: ["python", "/app/sync.py"]
+    environment:
+      - SERVER_IP=${SERVER_IP}
+      - BASEROW_URL=http://baserow
+      - BASEROW_HOST=${SERVER_IP}:8888
+      - BASEROW_EMAIL=kbsync@brdl.local
+      - BASEROW_PASSWORD=${KBSYNC_BW_PASS}
+      - BASEROW_WORKSPACE=99
+      - MAPPING_TABLE_ID=508
+      - DOCMOST_URL=http://docmost:3000
+      - DOCMOST_HOST=${SERVER_IP}:3002
+      - DOCMOST_EMAIL=kbsync@brdl.local
+      - DOCMOST_PASSWORD=${KBSYNC_DM_PASS}
+      - DEFAULT_DOCMOST_SPACE=Auto-Snapshots
+      - POLL_SECONDS=60
+      - PORT=8090
+    volumes:
+      - ./kb-sync:/app:ro
+    networks: [frontend]
+
+  # ---------- Admin-UI (Nutzer anlegen/deaktivieren in beiden Apps) ----------
+  admin:
+    build: ./admin
+    container_name: admin
+    restart: unless-stopped
+    environment:
+      - DOCMOST_WORKSPACE_ID=${DOCMOST_WORKSPACE_ID}
+      - PORT=8091
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [frontend]
