@@ -3,7 +3,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { Code } from "@tiptap/extension-code";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { TaskList, TaskItem } from "@tiptap/extension-list";
-import { Placeholder, CharacterCount } from "@tiptap/extensions";
+import { Placeholder, CharacterCount, UndoRedo } from "@tiptap/extensions";
 import { Superscript } from "@tiptap/extension-superscript";
 import SubScript from "@tiptap/extension-subscript";
 import { Typography } from "@tiptap/extension-typography";
@@ -114,6 +114,7 @@ import EmojiCommand from "./emoji-command";
 import { countWords } from "alfaaz";
 import AutoJoiner from "@/features/editor/extensions/autojoiner.ts";
 import GlobalDragHandle from "@/features/editor/extensions/drag-handle.ts";
+import { CleanStyles } from "@/features/editor/extensions/clean-styles.ts";
 
 const lowlight = createLowlight(common);
 lowlight.register("mermaid", plaintext);
@@ -388,6 +389,7 @@ export const mainExtensions = [
   MarkdownClipboard.configure({
     transformPastedText: true,
   }),
+  CleanStyles,
   CharacterCount.configure({
     wordCounter: (text) => countWords(text),
   }),
@@ -440,6 +442,7 @@ const TemplateSlashCommand = Command.configure({
 export const templateExtensions = [
   ...mainExtensions.filter((ext: any) => ext !== SlashCommand),
   TemplateSlashCommand,
+  UndoRedo,
 ] as any;
 
 export const collabExtensions: CollabExtensions = (provider, user) => [
