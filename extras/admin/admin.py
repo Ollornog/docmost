@@ -269,8 +269,13 @@ def validate(name, email, pw):
     return None
 
 # ============================== HTML ========================================
+# Inline-SVG-Favicon (Schild auf Navy), wird unter /admin/favicon.svg ausgeliefert.
+FAVICON = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+           '<rect width="100" height="100" rx="22" fill="#1e3a5f"/>'
+           '<text x="50" y="54" font-size="58" text-anchor="middle" dominant-baseline="central">🛡️</text></svg>')
+
 LOGIN_PAGE = """<!doctype html><html lang=de><head><meta charset=utf-8>
-<title>KB Admin · Login</title><style>
+<title>KB Admin · Login</title><link rel="icon" href="/admin/favicon.svg"><style>
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:linear-gradient(135deg,#1e3a5f,#2d6a9f);display:flex;align-items:center;justify-content:center;min-height:100vh}
 .box{background:#fff;padding:32px 28px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.3);min-width:320px}
 h1{margin:0 0 4px;font-size:1.4rem;color:#1e3a5f}
@@ -287,7 +292,7 @@ __ERR__
 <button>Anmelden</button>
 </form></div></body></html>"""
 
-PAGE = """<!doctype html><html lang=de><head><meta charset=utf-8><title>KB Admin</title><style>
+PAGE = """<!doctype html><html lang=de><head><meta charset=utf-8><title>KB Admin</title><link rel="icon" href="/admin/favicon.svg"><style>
 *{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f5f5f5}
 .wrap{max-width:1040px;margin:24px auto;padding:24px;background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.08)}
 h1{margin:0 0 4px}h2{margin-top:28px}
@@ -389,6 +394,11 @@ class H(http.server.BaseHTTPRequestHandler):
         self._redirect(f"/admin/?msg={urllib.parse.quote(m)}")
     def do_GET(self):
         p = urllib.parse.urlparse(self.path)
+        if p.path.endswith("/favicon.svg"):
+            b = FAVICON.encode("utf-8")
+            self.send_response(200); self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Cache-Control", "max-age=86400")
+            self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b); return
         qs = urllib.parse.parse_qs(p.query)
         if not is_authed(self):
             return self._html(render_login(err=(qs.get("e") == ["1"])))
