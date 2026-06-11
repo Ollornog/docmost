@@ -13,17 +13,19 @@ export interface DatabaseTableAttributes {
   title?: string; // optionaler, vom User überschreibbarer Titel
 }
 
-/** Erkennt die Datenquelle anhand der eingefügten Public-View-URL. */
+/** Erkennt die Datenquelle anhand der eingefügten URL (In-App-Link oder Public-View). */
 export function detectDatabaseSource(url: string): "baserow" | "nocodb" | "" {
   if (!url) return "";
-  if (/\/public\/grid\//.test(url)) return "baserow";
-  if (/\/nc\/view\//.test(url) || /\/shared-view\//.test(url)) return "nocodb";
+  // NocoDB: In-App-Link (#/nc/<base>/<table>) oder Public (/nc/view/, /shared-view/)
+  if (/#\/nc\//.test(url) || /\/nc\/view\//.test(url) || /\/shared-view\//.test(url)) return "nocodb";
+  // Baserow: In-App-Link (/database/<id>/table/<id>) oder Public (/public/grid/<slug>)
+  if (/\/database\/\d+\/table\/\d+/.test(url) || /\/public\/grid\//.test(url)) return "baserow";
   return "";
 }
 
-/** Regex für eingefügte Baserow/NocoDB-Public-Links (Paste-Rule). */
+/** Regex für eingefügte Baserow/NocoDB-Links (In-App oder Public; Paste-Rule). */
 export const DATABASE_TABLE_URL_REGEX =
-  /https?:\/\/[^\s]+\/(?:public\/grid|nc\/view)\/[^\s]+/g;
+  /https?:\/\/[^\s]+(?:\/(?:public\/grid|nc\/view|shared-view)\/[^\s]+|\/database\/\d+\/table\/\d+[^\s]*|#\/nc\/[^\s]+)/g;
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {

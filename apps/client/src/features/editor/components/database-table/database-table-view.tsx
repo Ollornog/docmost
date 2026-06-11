@@ -40,7 +40,7 @@ import { detectDatabaseSource, sanitizeUrl } from "@docmost/editor-ext";
 import toolbarClasses from "../common/toolbar-menu.module.css";
 import classes from "./database-table-view.module.css";
 
-interface TableData { columns: string[]; rows: string[][]; count: number; title: string; editUrl: string; fieldIds?: number[]; groupByIds?: number[]; }
+interface TableData { columns: string[]; rows: string[][]; count: number; title: string; editUrl: string; fieldIds?: number[]; groupByIds?: number[]; fetchedAt?: number; stale?: boolean; }
 type Sel = { r1: number; c1: number; r2: number; c2: number };
 
 const HEADER_BG = "light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5))";
@@ -86,35 +86,14 @@ function cellsToClipboard(cols: string[], rows: string[][], withHeader: boolean)
   writeClipboard(tsv, html);
 }
 
-async function fetchBaserow(src: string): Promise<TableData> {
-  const origin = new URL(src).origin;
-  const slug = src.match(/\/public\/grid\/([^/?#]+)/)?.[1];
-  if (!slug) throw new Error("Baserow-Slug nicht erkannt");
-  const info = await fetch(`${origin}/api/database/views/${slug}/public/info/`).then((r) => r.json());
-  const fields: { id: number; name: string }[] = (info.fields || []).map((f: any) => ({ id: f.id, name: f.name }));
-  const data = await fetch(`${origin}/api/database/views/grid/${slug}/public/rows/?size=200`).then((r) => r.json());
-  const results = data.results || [];
-  const columns = fields.map((f) => f.name);
-  const rows = results.map((r: any) => fields.map((f) => fmt(r[`field_${f.id}`])));
-  const u = new URL(src);
-  let editUrl = u.origin;
-  try { const res = await fetch(`${u.protocol}//${u.hostname}:8090/resolve?slug=${slug}`).then((r) => r.json()); if (res?.editUrl) editUrl = res.editUrl; } catch { /* optional */ }
-  const groupByIds: number[] = (info?.view?.group_bys || []).map((gb: any) => gb.field);
-  const fieldIds = fields.map((f) => f.id);
-  return { columns, rows, count: results.length, title: info?.view?.name || "", editUrl, fieldIds, groupByIds };
-}
-async function fetchNocodb(src: string): Promise<TableData> {
-  const origin = new URL(src).origin;
-  const uuid = src.match(/\/nc\/view\/([^/?#]+)/)?.[1] || src.match(/\/shared-view\/([^/?#]+)/)?.[1];
-  if (!uuid) throw new Error("NocoDB-View-UUID nicht erkannt");
-  const meta = await fetch(`${origin}/api/v2/public/shared-view/${uuid}/meta`).then((r) => r.json());
-  const data = await fetch(`${origin}/api/v2/public/shared-view/${uuid}/rows`).then((r) => r.json());
-  const list = data.list || data.rows || (Array.isArray(data) ? data : []);
-  let columns: string[] = (meta.columns || meta?.model?.columns || []).filter((c: any) => c && c.title && c.show !== false && !c.system).map((c: any) => c.title);
-  if (!columns.length && list.length) columns = Object.keys(list[0]).filter((k) => !["Id", "CreatedAt", "UpdatedAt"].includes(k));
-  const rows = list.map((r: any) => columns.map((c) => fmt(r[c])));
-  const editUrl = meta?.base_id && meta?.fk_model_id ? `${origin}/dashboard/#/nc/${meta.base_id}/${meta.fk_model_id}` : origin;
-  return { columns, rows, count: list.length, title: meta?.title || "", editUrl };
+// Daten kommen jetzt serverseitig über den kb-data-Proxy (same-origin /kb-table, mit Cache).
+// Der Browser spricht NICHT mehr direkt mit Baserow/NocoDB; Auth + Normalisierung passieren im Proxy.
+async function fetchTable(source: string, src: string, force = false): Promise<TableData> {
+  const qs = `source=${encodeURIComponent(source)}&src=${encodeURIComponent(src)}${force ? "&refresh=1" : ""}`;
+  const res = await fetch(`/kb-table?${qs}`);
+  const j = await res.json();
+  if (j?.error) throw new Error(j.error);
+  return j as TableData;
 }
 
 export default function DatabaseTableView(props: NodeViewProps) {
@@ -141,15 +120,13 @@ export default function DatabaseTableView(props: NodeViewProps) {
   const source = useMemo(() => detectDatabaseSource(src), [src]);
   const sourceName = source === "baserow" ? "Baserow" : source === "nocodb" ? "NocoDB" : "Quelle";
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     if (!src) return;
     setLoading(true); setError(null);
     try {
-      let td: TableData;
-      if (source === "baserow") td = await fetchBaserow(src);
-      else if (source === "nocodb") td = await fetchNocodb(src);
-      else throw new Error("Unbekannte Quelle (Baserow/NocoDB-Link erwartet)");
-      setData(td); setLoadedAt(Date.now());
+      if (source !== "baserow" && source !== "nocodb") throw new Error("Unbekannte Quelle (Baserow/NocoDB-Link erwartet)");
+      const td = await fetchTable(source, src, force);
+      setData(td); setLoadedAt(td.fetchedAt || Date.now());
     } catch (e: any) { setError(e?.message || "Fehler beim Laden"); } finally { setLoading(false); }
   }, [src, source]);
   useEffect(() => { load(); }, [load]);
@@ -256,12 +233,12 @@ export default function DatabaseTableView(props: NodeViewProps) {
           <Popover.Target>
             <Card radius="md" p="xs" withBorder className={clsx(selected ? "ProseMirror-selectednode" : "")}>
               <Group gap="xs" justify="center"><ActionIcon variant="transparent" color="gray"><IconDatabase size={18} /></ActionIcon>
-                <Text component="span" c="dimmed">Datenbank-Tabelle einfügen (Baserow / NocoDB Public-Link)</Text></Group>
+                <Text component="span" c="dimmed">Datenbank-Tabelle einfügen (Baserow- / NocoDB-Link)</Text></Group>
             </Card>
           </Popover.Target>
           <Popover.Dropdown bg="var(--mantine-color-body)">
             <form onSubmit={form.onSubmit(onSubmit)}>
-              <FocusTrap active><TextInput placeholder="https://…/public/grid/…  oder  …/nc/view/…" data-autofocus {...form.getInputProps("url")} /></FocusTrap>
+              <FocusTrap active><TextInput placeholder="…/database/…/table/…  oder  …/#/nc/…" data-autofocus {...form.getInputProps("url")} /></FocusTrap>
               <Group justify="center" mt="xs"><Button type="submit">Tabelle einfügen</Button></Group>
             </form>
           </Popover.Dropdown>
@@ -300,7 +277,7 @@ export default function DatabaseTableView(props: NodeViewProps) {
             <Tooltip label="Tabelle öffnen (neuer Tab)" position="top" withinPortal><ActionIcon variant="subtle" size="md" className={classes.iconLink} component="a" href={src} target="_blank" rel="noopener noreferrer"><IconExternalLink size={17} /></ActionIcon></Tooltip>
             <Tooltip label={`In ${sourceName} bearbeiten`} position="top" withinPortal><ActionIcon variant="subtle" size="md" className={classes.iconLink} component="a" href={editUrl} target="_blank" rel="noopener noreferrer"><IconPencil size={17} /></ActionIcon></Tooltip>
             <TBtn label={sel ? "Auswahl kopieren" : "Ganze Tabelle kopieren"} onClick={doCopy}>{copied ? <IconCheck size={17} color="var(--mantine-color-green-6)" /> : <IconCopy size={17} />}</TBtn>
-            <TBtn label="Aktualisieren" onClick={load}><IconRefresh size={17} /></TBtn>
+            <TBtn label="Aktualisieren" onClick={() => load(true)}><IconRefresh size={17} /></TBtn>
             <div className={toolbarClasses.divider} />
             <TBtn color="red" label="Block löschen" onClick={() => deleteNode()}><IconTrash size={17} /></TBtn>
           </div>
@@ -322,7 +299,7 @@ export default function DatabaseTableView(props: NodeViewProps) {
               <Group justify="space-between" mt="xs"><Button size="compact-xs" variant="subtle" onClick={() => { updateAttributes({ title: "" }); setTitleOpen(false); }}>Zurücksetzen</Button><Button size="compact-xs" onClick={saveTitle}>OK</Button></Group>
             </Popover.Dropdown>
           </Popover>
-          <Text component="span" c="dimmed">{` · Datenbank-Tabelle · ${sourceName}`}{data ? ` · ${data.count} Zeilen` : ""}{loadedAt ? ` · ${relTime()}` : ""}</Text>
+          <Text component="span" c="dimmed">{` · Datenbank-Tabelle · ${sourceName}`}{data ? ` · ${data.count} Zeilen` : ""}{loadedAt ? ` · ${relTime()}` : ""}{data?.stale ? " · Cache" : ""}</Text>
         </Text>
       )}
 

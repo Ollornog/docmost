@@ -44,3 +44,4 @@ lerna-debug.log*
 
 # admin build-context cruft
 extras/admin/__pycache__/
+extras/**/__pycache__/
