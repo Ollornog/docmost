@@ -1,0 +1,36 @@
+# Isolierte Wegwerf-Instanz NUR zum Testen des databaseTable-Blocks.
+# Komplett ephemer (Postgres auf tmpfs), eigener Projektname, Port 3009 — berührt KEINEN
+# produktiven Stack. Wird von roundtrip.sh gestartet und danach mit `down -v` entfernt.
+name: docmost-blocktest
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: docmost
+      POSTGRES_USER: docmost
+      POSTGRES_PASSWORD: testpass
+    tmpfs:
+      - /var/lib/postgresql/data   # ephemer: kein Volume, nichts bleibt liegen
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docmost -d docmost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+
+  docmost:
+    image: ${DOCMOST_IMAGE:-docmost-custom:local}
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    environment:
+      APP_URL: http://localhost:3009
+      APP_SECRET: testsecret_testsecret_testsecret_0123456789
+      DATABASE_URL: postgresql://docmost:testpass@db:5432/docmost?schema=public
+      REDIS_URL: redis://redis:6379
+      # CLOUD NICHT setzen — sonst process.exit(1) wegen fehlendem ee-Submodul.
+    ports:
+      - "3009:3000"
