@@ -7,11 +7,11 @@ import CreateSpaceModal from "@/features/space/components/create-space-modal";
 import { AllSpacesList } from "@/features/space/components/spaces-page";
 import FavoriteSpacesGrid from "@/features/space/components/spaces-page/favorite-spaces-grid";
 import { usePaginateAndSearch } from "@/hooks/use-paginate-and-search";
-import useUserRole from "@/hooks/use-user-role";
 
 export default function Spaces() {
   const { t } = useTranslation();
-  const { isAdmin } = useUserRole();
+  // FORK-PATCH: Create-Button für ALLE (auch Member) — sie dürfen jetzt Spaces
+  // anlegen und werden Owner ihres Space. Siehe DOCMOST-FORK.md.
   const { search, cursor, goNext, goPrev, handleSearch } = usePaginateAndSearch();
 
   const { data, isLoading } = useGetSpacesQuery({
@@ -31,7 +31,7 @@ export default function Spaces() {
       <Container size={"800"} pt="xl">
         <Group justify="space-between" mb="xl">
           <Title order={1} size="h3">{t("Spaces")}</Title>
-          {isAdmin && <CreateSpaceModal />}
+          <CreateSpaceModal />
         </Group>
 
         <FavoriteSpacesGrid />

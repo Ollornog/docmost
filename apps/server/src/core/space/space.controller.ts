@@ -135,8 +135,11 @@ export class SpaceController {
     @AuthWorkspace() workspace: Workspace,
   ) {
     const ability = this.workspaceAbility.createForUser(user, workspace);
+    // FORK-PATCH: Create statt Manage — erlaubt Member das ANLEGEN eigener Spaces.
+    // Owner/Admin haben Manage (Obermenge inkl. Create) und sind unberührt.
+    // Siehe DOCMOST-FORK.md.
     if (
-      ability.cannot(WorkspaceCaslAction.Manage, WorkspaceCaslSubject.Space)
+      ability.cannot(WorkspaceCaslAction.Create, WorkspaceCaslSubject.Space)
     ) {
       throw new ForbiddenException();
     }

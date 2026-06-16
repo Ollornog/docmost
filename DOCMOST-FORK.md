@@ -73,10 +73,77 @@ dann `docker compose up -d docmost`. **DB/Daten kompatibel** (gleiche v0.80.2, d
 
 ---
 
+# Fork-Patch 2: Member dürfen eigene Spaces anlegen (ohne Workspace-Admin)
+
+> Zweiter, **unabhängiger** Patch im selben Custom-Image (`docmost-custom:local`). Eingebaut 2026-06-12.
+> Hat **nichts** mit dem databaseTable-Block zu tun — separat warten.
+
+## Warum / was ist anders als Standard-Docmost
+Standard-Docmost (CE) koppelt das **Anlegen** eines Space an die Workspace-Rolle **Owner/Admin**;
+normale **Member** können keine Spaces erstellen. Gewünschtes Verhalten hier: **jeder User darf eigene
+Spaces anlegen und ist dann automatisch deren Space-Admin/Owner** — **ohne** sonstige Workspace-Admin-
+Rechte (keine Member-Verwaltung, keine Workspace-Settings, kein Zugriff auf fremde Spaces).
+
+Das Berechtigungssystem trennt `Create` und `Manage` bereits sauber — Standard nutzt beim Create-Gate
+aber `Manage`. Der Patch gibt Membern gezielt nur `Create Space` und lockert das Gate auf `Create`.
+Der Ersteller wird ohnehin schon automatisch Space-`ADMIN` (`space.service.ts` `createSpace` →
+`addUserToSpace(..., SpaceRole.ADMIN, ...)`), d. h. **Owner seines** Space. Fremde Spaces bleiben isoliert
+(Space-Rechte sind rein mitgliedschaftsbasiert, `space-ability.factory.ts`; ein Nicht-Mitglied — auch ein
+Workspace-Admin — bekommt `NotFoundException`).
+
+## Patch-Oberfläche (3 Stellen, additiv/minimal — alle mit `FORK-PATCH:`-Kommentar markiert)
+| Datei | Änderung |
+|---|---|
+| `apps/server/src/core/casl/abilities/workspace-ability.factory.ts` | In `buildWorkspaceMemberAbility()`: eine Zeile `can(WorkspaceCaslAction.Create, WorkspaceCaslSubject.Space);`. |
+| `apps/server/src/core/space/space.controller.ts` | In `createSpace()` das Gate von `cannot(Manage, Space)` → `cannot(Create, Space)`. (Owner/Admin haben `Manage` = Obermenge inkl. `Create` → unberührt.) |
+| `apps/client/src/pages/spaces/spaces.tsx` | Create-Button entgated: `{isAdmin && <CreateSpaceModal />}` → `<CreateSpaceModal />`; nun ungenutztes `useUserRole`/`isAdmin` entfernt (sonst TS-`noUnusedLocals`-Buildfehler). |
+
+**Bewusst NICHT geändert:** `apps/client/src/pages/settings/space/spaces.tsx` bleibt `isAdmin`-gegated —
+das ist die Workspace-Settings-Liste **aller** Spaces (Admin-Verwaltung), die Member nicht sehen sollen.
+Der einzige member-sichtbare Erstell-Einstieg ist die Seite **`/spaces`**.
+
+## Deploy (im selben Image wie Patch 1)
+```bash
+cd /home/brdl/kb/docmost
+docker build -t docmost-custom:local .          # baut BEIDE Patches ins Image
+cd /srv/stack && docker compose up -d docmost    # Image-Tag bleibt docmost-custom:local
+```
+Kein DB-Schema-Change, keine Migration, keine .env-Änderung. **Rollback:** alten Image-Build wieder
+einspielen bzw. die 3 Stellen revertieren und neu bauen. Bestehende Spaces/Rechte bleiben unberührt.
+
+## Testen (nach Deploy)
+1. **Member kann anlegen:** Als normaler **Member** (Workspace-Rolle `member`) einloggen → `/spaces` →
+   Button **„Create space"** ist sichtbar → Space anlegen klappt (HTTP 200).
+2. **Ersteller = Owner:** Der Member ist im neuen Space **Space-Admin** (kann Settings, Mitglieder, löschen).
+3. **Keine Workspace-Admin-Rechte:** Derselbe Member sieht **keine** Workspace-Settings-Verwaltung
+   (Members/Spaces/Groups-Adminlisten), kann **keine** anderen User verwalten.
+4. **Isolation:** Ein anderer Member sieht den fremden Space **nicht** in seiner Space-Liste und bekommt
+   bei direktem Zugriff `NotFound`/Forbidden.
+5. **Owner/Admin unverändert:** Workspace-Owner/-Admin können weiterhin Spaces anlegen.
+
+Schneller API-Smoke-Test (als Member-Token): `POST /api/spaces/create` mit `{ "name": "..." }` → 200;
+mit einem zweiten Member denselben Space via `POST /api/spaces/info` abfragen → kein Zugriff.
+
+## Update-Handhabung (bei Docmost-Updates beachten)
+Diese 3 Dateien sind **Kern-Permission-Dateien** (anders als der additive databaseTable-Block) →
+**höheres Konfliktrisiko**, wenn Docmost das CASL-/Space-Modell umbaut. Bei jedem Versions-Update:
+1. Prüfen, ob `WorkspaceCaslAction.Create` / `WorkspaceCaslSubject.Space` und die Member-Ability-Funktion
+   noch existieren (`workspace-ability.type.ts`, `workspace-ability.factory.ts`).
+2. Die 3 `FORK-PATCH:`-Stellen erneut anbringen (per `grep -rn "FORK-PATCH" apps` im alten Fork auffindbar).
+3. Achtung Frontend: Falls sich `pages/spaces/spaces.tsx` ändert, nur den Create-Button entgaten und keine
+   ungenutzten Imports/Variablen stehen lassen (strikter TS-Build).
+4. Gegen-Check, dass **Owner/Admin** weiterhin anlegen können (Manage ⊇ Create) und Member **nur** anlegen,
+   sonst nichts (Test 3+4 oben).
+
+---
+
 ## 🔁 Update-Handhabung — Anleitung für Claude (bei Docmost-Updates)
 
 > Ziel: neue Docmost-Version übernehmen und den `databaseTable`-Block wieder einbauen. Der Patch ist **additiv**
 > (1 neuer Node, 1 neue View, wenige Registrierungszeilen) → Konfliktrisiko gering, aber Editor-Interna können sich ändern.
+>
+> ⚠️ **Es gibt einen ZWEITEN Patch** (Member-Space-Creation, 3 Permission-Dateien) — eigener Abschnitt
+> „Fork-Patch 2" oben mit eigener Update-Checkliste. Beim Update **beide** Patches neu anbringen.
 
 **Schritte:**
 1. Neue Version ermitteln: `git ls-remote --tags --refs https://github.com/docmost/docmost.git | tail`. Ziel-Tag = die

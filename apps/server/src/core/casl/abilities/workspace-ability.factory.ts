@@ -69,6 +69,9 @@ function buildWorkspaceMemberAbility() {
   can(WorkspaceCaslAction.Read, WorkspaceCaslSubject.Settings);
   can(WorkspaceCaslAction.Read, WorkspaceCaslSubject.Member);
   can(WorkspaceCaslAction.Read, WorkspaceCaslSubject.Space);
+  // FORK-PATCH: Member dürfen eigene Spaces ANLEGEN (werden dann Space-Admin/Owner
+  // ihres Space) — ohne sonstige Workspace-Admin-Rechte. Siehe DOCMOST-FORK.md.
+  can(WorkspaceCaslAction.Create, WorkspaceCaslSubject.Space);
   can(WorkspaceCaslAction.Read, WorkspaceCaslSubject.Group);
   can(WorkspaceCaslAction.Manage, WorkspaceCaslSubject.Attachment);
   can(WorkspaceCaslAction.Create, WorkspaceCaslSubject.API);
