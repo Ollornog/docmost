@@ -120,6 +120,21 @@ export default function DatabaseTableView(props: NodeViewProps) {
   const source = useMemo(() => detectDatabaseSource(src), [src]);
   const sourceName = source === "baserow" ? "Baserow" : source === "nocodb" ? "NocoDB" : "Quelle";
 
+  // Stabiler Ref-Callback (nur bei Mount/Unmount aufgerufen): nativer Listener auf der
+  // Werkzeug-Blase, der pointer/mousedown stoppt, BEVOR ProseMirror ihn sieht. PM sitzt
+  // als nativer Listener auf .ProseMirror (einem Vorfahren der Blase) -> ein nativer
+  // Listener auf der Blase feuert in der Bubble-Phase davor und kann per stopPropagation
+  // verhindern, dass PM den mousedown verarbeitet. Sonst ändert PM die Selection und löst
+  // ein NodeView-Re-Render zwischen mousedown und mouseup aus -> der erste Button-Klick
+  // verpufft (DOM ersetzt). React-Handler wären zu spät: die Event-Delegation am React-
+  // Root läuft erst NACH dem PM-Listener. Der click bleibt frei -> Buttons/Links gehen.
+  const bubbleCb = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const stop = (e: Event) => e.stopPropagation();
+    el.addEventListener("mousedown", stop);
+    el.addEventListener("pointerdown", stop);
+  }, []);
+
   const load = useCallback(async (force = false) => {
     if (!src) return;
     setLoading(true); setError(null);
@@ -262,7 +277,7 @@ export default function DatabaseTableView(props: NodeViewProps) {
           if (!t.closest?.("[data-cell],[data-colheader],[data-table-toolbar]")) setSel(null);
         }}>
       {showBubble && (
-        <div className={classes.bubble} data-table-toolbar contentEditable={false}>
+        <div ref={bubbleCb} className={classes.bubble} data-table-toolbar contentEditable={false}>
           <div className={toolbarClasses.toolbar}>
             <TBtn label={`Spaltenbreite: ${WLABEL[wmode]}`} onClick={cycleWidth}><IconArrowsHorizontal size={17} /></TBtn>
             <TBtn active={!showTitle} label={showTitle ? "Titelleiste ausblenden" : "Titelleiste einblenden"} onClick={() => updateAttributes({ showTitle: !showTitle })}>{showTitle ? <IconEye size={17} /> : <IconEyeOff size={17} />}</TBtn>

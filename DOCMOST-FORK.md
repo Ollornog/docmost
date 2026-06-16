@@ -24,7 +24,7 @@
 |---|---|
 | `packages/editor-ext/src/lib/database-table.ts` | **NEU** — Tiptap-Node `databaseTable` (Attribute s. o.), `detectDatabaseSource`, Paste-Rule (Baserow/NocoDB-Public-Link → Node), `setDatabaseTable`-Command. Vorlage: `embed.ts`. |
 | `packages/editor-ext/src/index.ts` | Export `./lib/database-table`. |
-| `apps/client/.../database-table/database-table-view.tsx` | **NEU** — React-NodeView: Fetch (Baserow/NocoDB Public-API) → native Mantine-`Table`; Werkzeug-Blase (bei Selektion/aktiv), Titel editierbar, Breite/Header/Hintergrund/Rahmen-Toggles, Zellauswahl + Kopieren (Clipboard-API **mit `execCommand`-Fallback für HTTP**), Baserow-Edit-Deeplink via kb-sync-Resolver. |
+| `apps/client/.../database-table/database-table-view.tsx` | **NEU** — React-NodeView: Fetch (Baserow/NocoDB Public-API) → native Mantine-`Table`; Werkzeug-Blase (bei Selektion/aktiv; **nativer `mousedown`/`pointerdown`-`stopPropagation`-Listener auf der Blase via stabilem Ref-Callback `bubbleCb`, sonst „klaut" ProseMirror den ersten Button-Klick** — s. `solved/2026-06-16-databaseTable-toolbar-erster-klick.md`), Titel editierbar, Breite/Header/Hintergrund/Rahmen-Toggles, Zellauswahl + Kopieren (Clipboard-API **mit `execCommand`-Fallback für HTTP**), Baserow-Edit-Deeplink via kb-sync-Resolver. |
 | `apps/client/.../database-table/database-table-view.module.css` | **NEU** — Blasen-Position, Link-Unterstrich-Fix, Rahmen-Modi (`.bAll`/`.bH`/`.bNone`). |
 | `apps/client/src/features/editor/extensions/extensions.ts` | Import `DatabaseTable` + `DatabaseTableView`; `DatabaseTable.configure({ view: DatabaseTableView })`. |
 | `apps/client/src/features/editor/components/slash-menu/menu-items.ts` | Slash-Eintrag „Datenbank-Tabelle" (`setDatabaseTable({})`). |
@@ -156,7 +156,10 @@ Diese 3 Dateien sind **Kern-Permission-Dateien** (anders als der additive databa
      prüfen ob `nodePasteRule`/`ReactNodeViewRenderer`-Importe noch stimmen).
    - `packages/editor-ext/src/index.ts` → `export * from "./lib/database-table";` ergänzen.
    - `apps/client/.../components/database-table/database-table-view.tsx` → **kopieren** (prüfen: Mantine-`Table`-API,
-     `@tabler/icons-react`-Namen, `NodeViewProps`-Felder).
+     `@tabler/icons-react`-Namen, `NodeViewProps`-Felder). ⚠️ **Nicht verlieren:** der native `stopPropagation`-Listener
+     auf der Werkzeug-Blase (`bubbleCb`, `ref={bubbleCb}`) — ohne ihn ist der erste Toolbar-Button-Klick tot
+     (ProseMirror verarbeitet den mousedown vor React → Re-Render → click verpufft). Test: Tabelle öffnen, **erster**
+     Klick auf einen Balken-Button muss sofort greifen. Details: `solved/2026-06-16-databaseTable-toolbar-erster-klick.md`.
    - `apps/client/.../extensions/extensions.ts` → wie beim `Embed`: in den `@docmost/editor-ext`-Import `DatabaseTable`
      aufnehmen, `DatabaseTableView` importieren, neben `Embed.configure(...)` ein `DatabaseTable.configure({view: DatabaseTableView})`.
    - `apps/client/.../slash-menu/menu-items.ts` → den „Datenbank-Tabelle"-Eintrag neben „Iframe embed" einfügen.
